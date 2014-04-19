@@ -11,15 +11,12 @@ clean:
 	rm -f boot
 	rm -rf resources/*
 	(cd boot-classloader; lein clean)
-	(cd boot-podloader; lein clean)
 	lein clean
 
 build: clean
 	mkdir -p resources
 	(cd boot-classloader; lein uberjar)
-	(cd boot-podloader; lein uberjar)
 	cp boot-classloader/target/boot-classloader*-standalone.jar resources/boot-classloader.jar
-	cp boot-podloader/target/boot-podloader*-standalone.jar resources/boot-podloader.jar
 	lein uberjar
 
 boot: build

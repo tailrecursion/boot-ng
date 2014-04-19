@@ -7,4 +7,4 @@
 
 (defn -main [& args]
   (println "howdy")
-  )
+  (System/exit 0))
