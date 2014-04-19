@@ -1,7 +1,8 @@
 (ns tailrecursion.boot.core.classlojure
   (:use [clojure.java.io :only [as-url]]
         [clojure.string :only [join]])
-  (:import [java.net URL URLClassLoader]))
+  (:import [java.net URL URLClassLoader]
+           [clojure.lang DynamicClassLoader]))
 
 (def base-classloader
   (or (.getClassLoader clojure.lang.RT)
@@ -15,6 +16,12 @@
    (into-array URL (map as-url (flatten urls)))
    ext))
 
+(defn- dyn-classloader [urls ext]
+  (let [loader (DynamicClassLoader. ext)
+        urls   (map as-url (flatten urls))]
+    (doseq [u urls] (.addURL loader u))
+    loader))
+  
 (defn wrap-ext-classloader [& urls]
   (alter-var-root #'ext-classloader
     (fn [ext] ;; only permit wrapping once
@@ -95,7 +102,7 @@
          objects))
 
 (defn classlojure [& urls]
-  (let [^URLClassLoader cl (url-classloader urls ext-classloader)]
+  (let [^URLClassLoader cl (dyn-classloader urls ext-classloader)]
     (.loadClass cl "clojure.lang.RT")
     (eval-in* cl '(require 'clojure.main))
     cl))

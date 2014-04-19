@@ -4,7 +4,7 @@
    [tailrecursion.boot.core.classlojure :as cl]
    [tailrecursion.boot.core.util        :as util])
   (:import
-   [java.net URLClassLoader URL]
+   [java.net URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
 (defn make-classloader
@@ -16,6 +16,10 @@
                 out (io/output-stream out)]
       (io/copy in out))
     (cl/classlojure (str "file:" (.getPath out)))))
+
+(defn make-podloader
+  [jar-file-path]
+  (cl/classlojure (str "file:" (.getPath (io/file jar-file-path)))))
 
 (def dependencies (atom '[[org.clojure/clojure "1.5.1"]]))
 (def cl2          (future (make-classloader "boot-classloader.jar")))
@@ -68,10 +72,15 @@
          (tailrecursion.boot-classloader/glob-match? ~pattern ~path))))
 
 (defn make-pod
-  [env]
-  (let [pod  (make-classloader "boot-podloader.jar")]
-    (cl/eval-in pod
-      `(do (require 'tailrecursion.boot-podloader)
-           (tailrecursion.boot-podloader/add-dirs! ~(into [] (:src-paths env)))
-           (tailrecursion.boot-podloader/add-jars! ~(mapv :jar (resolve-deps! env)))))
-    (fn [expr] (cl/eval-in pod expr))))
+  [& {:keys [dependencies repositories src-paths] :as env}]
+  (let [env   (merge dfl-env env)
+        clj?  #(= 'org.clojure/clojure (first (:dep %)))
+        {[{clj-jar :jar}] true, other-deps false}
+        (->> env resolve-deps! (group-by clj?))]
+    (when-not (and clj-jar (.exists (io/file clj-jar)))
+      (throw (Exception. "Pod has no Clojure dependency")))
+    (let [pod   (make-podloader clj-jar)
+          deps  (->> other-deps (mapv :jar) (into src-paths))
+          files (->> deps (mapv io/file) (filter #(.exists %)))]
+      (doseq [file files] (.addURL pod (-> file (.. toURI toURL))))
+      (fn [expr] (cl/eval-in pod expr)))))
