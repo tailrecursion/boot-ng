@@ -72,7 +72,7 @@
          (tailrecursion.boot-classloader/glob-match? ~pattern ~path))))
 
 (defn make-pod
-  [& {:keys [dependencies repositories src-paths] :as env}]
+  [& {:keys [src-paths] :as env}]
   (let [env   (merge dfl-env env)
         clj?  #(= 'org.clojure/clojure (first (:dep %)))
         {[{clj-jar :jar}] true, other-deps false}

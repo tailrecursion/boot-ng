@@ -16,7 +16,7 @@
   (when (.endsWith name ".jar")
     (case type
       :started              (warn "Retrieving %s from %s\n" name repo)
-      (:corrupted :failed)  (when err (warn "Error: %s\n" (.getMessage err)))
+      (:corrupted :failed)  (when err (warn "%s\n" (.getMessage err)))
       nil)))
 
 (defn ^:from-leiningen build-url
