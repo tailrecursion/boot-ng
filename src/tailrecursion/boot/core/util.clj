@@ -3,17 +3,18 @@
    [java.util.zip ZipFile])
   (:require
    [clojure.java.io    :as io]
-   [clojure.stacktrace :as trace]))
+   [clojure.stacktrace :as trace]
+   [clojure.pprint     :as pprint]))
 
 (defmacro guard
   "Returns nil instead of throwing exceptions."
-  [body & [default]]
-  `(try ~@body (catch Throwable _# ~default)))
+  [expr & [default]]
+  `(try ~expr (catch Throwable _# ~default)))
 
 (defmacro with-rethrow
-  "Evaluates body and rethrows any thrown exceptions with the given message."
-  [body message]
-  `(try ~@body (catch Throwable e# (throw (Exception. ~message e#)))))
+  "Evaluates expr and rethrows any thrown exceptions with the given message."
+  [expr message]
+  `(try ~expr (catch Throwable e# (throw (Exception. ~message e#)))))
 
 (defmacro exit-error
   [& body]
@@ -40,7 +41,8 @@
   [v val]
   (ffirst (filter (comp #{val} second) (map vector (range) v))))
 
-(defn get-resources [name]
+(defn get-resources
+  [name]
   (->> (.. Thread currentThread getContextClassLoader (getResources name))
     enumeration-seq))
 
@@ -75,3 +77,6 @@
     enumeration-seq
     (map #(vector (.getName %) (.getInputStream jar %)))
     (into {})))
+
+(defn pp      [expr] (pprint/write expr :dispatch pprint/code-dispatch))
+(defn pp-str  [expr] (with-out-str (pp expr)))
