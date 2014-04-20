@@ -76,5 +76,5 @@
     (let [pod   (make-podloader clj-jar)
           deps  (->> other-deps (mapv :jar) (into src-paths))
           files (->> deps (mapv io/file) (filter #(.exists %)))]
-      (doseq [file files] (.addURL pod (-> file (.. toURI toURL))))
+      (doseq [file files] (.addURL pod (.. file toURI toURL)))
       (fn [expr] (cl/eval-in pod expr)))))
