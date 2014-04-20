@@ -34,9 +34,19 @@
   [& more]
   (binding [*out* *err*] (apply printf more) (flush)))
 
+(defn index-of
+  [v val]
+  (ffirst (filter (comp #{val} second) (map vector (range) v))))
+
 (defn get-resources [name]
   (->> (.. Thread currentThread getContextClassLoader (getResources name))
     enumeration-seq))
+
+(defn copy-resource
+  [resource-path out-path]
+  (with-open [in  (io/input-stream (io/resource resource-path))
+              out (io/output-stream (io/file out-path))]
+    (io/copy in out)))
 
 (defn get-project [sym]
   (when-let [pform (->> (get-resources "project.clj") 

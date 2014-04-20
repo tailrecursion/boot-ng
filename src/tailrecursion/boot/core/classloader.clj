@@ -7,18 +7,12 @@
    [java.net URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
-(defn copy-resource
-  [resource-path out-path]
-  (with-open [in  (io/input-stream (io/resource resource-path))
-              out (io/output-stream (io/file out-path))]
-    (io/copy in out)))
-
 (defn make-classloader
   []
   (let [tmp  (doto (io/file ".boot") .mkdirs)
         path (-> "boot-classloader-resource-path" io/resource slurp .trim)
         jar  (io/file tmp path)]
-    (when (.createNewFile jar) (copy-resource path jar))
+    (when (.createNewFile jar) (util/copy-resource path jar))
     (cl/classlojure (str "file:" (.getPath jar)))))
 
 (defn make-podloader
@@ -26,18 +20,14 @@
   (cl/classlojure (str "file:" (.getPath (io/file jar-file-path)))))
 
 (def cl2          (future (make-classloader)))
-(def dependencies (atom '[[org.clojure/clojure "1.5.1"]]))
+(def dependencies (atom (:dependencies (util/get-project 'tailrecursion/boot))))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
 
 ;;;;
 
-(defn index-of
-  [v val]
-  (ffirst (filter (comp #{val} second) (map vector (range) v))))
-
 (defn exclude
   [syms coordinate]
-  (if-let [idx (index-of coordinate :exclusions)]
+  (if-let [idx (util/index-of coordinate :exclusions)]
     (let [exclusions (get coordinate (inc idx))]
       (assoc coordinate (inc idx) (into exclusions syms)))
     (into coordinate [:exclusions syms])))
