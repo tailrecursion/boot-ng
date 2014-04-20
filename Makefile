@@ -16,7 +16,8 @@ clean:
 build: clean
 	mkdir -p resources
 	(cd boot-classloader; lein uberjar)
-	cp boot-classloader/target/boot-classloader*-standalone.jar resources/boot-classloader.jar
+	cp boot-classloader/target/boot-classloader*-standalone.jar resources
+	(cd resources; echo `ls boot-classloader-*-standalone.jar` > boot-classloader-resource-path)
 	lein uberjar
 
 boot: build

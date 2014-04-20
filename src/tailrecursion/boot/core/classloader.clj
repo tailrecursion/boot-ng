@@ -7,22 +7,26 @@
    [java.net URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
+(defn copy-resource
+  [resource-path out-path]
+  (with-open [in  (io/input-stream (io/resource resource-path))
+              out (io/output-stream (io/file out-path))]
+    (io/copy in out)))
+
 (defn make-classloader
-  [jar-resource-path]
-  (let [tmp (doto (io/file ".boot") .mkdirs)
-        in  (io/resource jar-resource-path)
-        out (io/file tmp jar-resource-path)]
-    (with-open [in  (io/input-stream in)
-                out (io/output-stream out)]
-      (io/copy in out))
-    (cl/classlojure (str "file:" (.getPath out)))))
+  []
+  (let [tmp  (doto (io/file ".boot") .mkdirs)
+        path (-> "boot-classloader-resource-path" io/resource slurp .trim)
+        jar  (io/file tmp path)]
+    (when (.createNewFile jar) (copy-resource path jar))
+    (cl/classlojure (str "file:" (.getPath jar)))))
 
 (defn make-podloader
   [jar-file-path]
   (cl/classlojure (str "file:" (.getPath (io/file jar-file-path)))))
 
+(def cl2          (future (make-classloader)))
 (def dependencies (atom '[[org.clojure/clojure "1.5.1"]]))
-(def cl2          (future (make-classloader "boot-classloader.jar")))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
 
 ;;;;
