@@ -1,4 +1,6 @@
 (ns tailrecursion.boot.core.util
+  (:import
+   [java.util.zip ZipFile])
   (:require
    [clojure.java.io    :as io]
    [clojure.stacktrace :as trace]))
@@ -48,9 +50,28 @@
               out (io/output-stream (io/file out-path))]
     (io/copy in out)))
 
-(defn get-project [sym]
+(defn get-project
+  [sym]
   (when-let [pform (->> (get-resources "project.clj") 
                      (map (comp read-string slurp))
                      (filter (comp (partial = sym) second))
                      first)]
     (->> pform (drop 1) (partition 2) (map vec) (into {}))))
+
+(defn bind-syms
+  [form]
+  (let [sym? #(and (symbol? %) (not= '& %))]
+    (->> form (tree-seq coll? seq) (filter sym?) distinct)))
+
+(defmacro with-let
+  "Binds resource to binding and evaluates body.  Then, returns
+  resource.  It's a cross between doto and with-open."
+  [[binding resource] & body]
+  `(let [~binding ~resource] ~@body ~binding))
+
+(defn entries
+  [jar]
+  (->> (.entries jar)
+    enumeration-seq
+    (map #(vector (.getName %) (.getInputStream jar %)))
+    (into {})))

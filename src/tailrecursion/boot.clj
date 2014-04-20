@@ -7,4 +7,5 @@
 
 (defn -main [& args]
   (println "howdy")
+  (prn @core/dependencies)
   (System/exit 0))
