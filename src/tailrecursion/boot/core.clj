@@ -14,16 +14,11 @@
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory))
 
-(declare get-env set-env! boot-env on-env! merge-env! out-files)
+(declare +boot-dir+ get-env set-env! boot-env on-env! merge-env! out-files)
 
 ;; ## Utility Functions
 ;;
 ;; _These functions are used internally by boot and are not part of the public API._
-
-(defn- tmpreg
-  "Get the tempfile registry object for the current boot environment."
-  []
-  (get-in @boot-env [:system :tmpregistry]))
 
 (defn- configure!*
   "Performs side-effects associated with changes to the env atom. Boot adds this
@@ -38,34 +33,39 @@
   [env deps]
   (loader/add-deps! (assoc env :dependencies deps)))
 
-(def ^:private base-env
+(defn- base-env
   "Returns initial boot environment settings."
-  (fn []
-    (merge loader/dfl-env
-      {:dependencies  @loader/dependencies
-       :out-path      "out"
-       :src-paths     #{}
-       :system        {:cwd         (io/file (System/getProperty "user.dir"))
-                       :home        (io/file (System/getProperty "user.home"))
-                       :jvm-opts    (vec (.. ManagementFactory getRuntimeMXBean getInputArguments))
-                       :tmpregistry (tmp/init! (tmp/registry (io/file ".boot" "tmp")))
-                       :gitignore   (git/make-gitignore-matcher)}})))
+  []
+  (merge loader/dfl-env
+    {:dependencies  @loader/dependencies
+     :out-path      "out"
+     :src-paths     #{}}))
 
-;; ## Boot Environment
-;;
-;; _These functions are used internally by boot and are not part of the public
-;; API._
+(def +env+
+  "Environment variables used by boot to configure itself."
+  {:HOME         (System/getenv "HOME")
+   :BOOT_DIR     (System/getenv "BOOT_DIR")
+   :BOOT_SCRIPT  (System/getenv "BOOT_SCRIPT")})
 
-(def ^:dynamic *opts*
-  "Command line options for boot itself are bound to this var."
-  {})
+(def +boot-dir+
+  "Directory where boot keeps classloader jar files, rc config scripts, etc."
+  (let [envdir (:BOOT_DIR +env+)
+        dfldir (io/file (:HOME +env+) ".boot")]
+    (doto (io/file (or envdir dfldir)) .mkdirs)))
 
-(def boot-env
-  "Atom containing environment key/value pairs. Do not manipulate this atom
-  directly. Use `set-env!` (below) instead."
+(def ^:private boot-env
+  "Atom containing environment key/value pairs."
   (atom nil))
 
-(defn init!
+(def ^:private gitignore
+  "The gitignore matcher instance."
+  (util/with-future-fn (git/make-gitignore-matcher)))
+
+(def ^:private tmpreg
+  "The managed temporary file registry."
+  (tmp/init! (tmp/registry (io/file +boot-dir+ "tmp"))))
+
+(defn- init!
   "Initialize the boot environment. This is normally run once by boot at startup.
   There should be no need to call this function directly."
   [& kvs]
@@ -128,7 +128,7 @@
     (do (add-sync! bar [baz]) (add-sync! bar [baf]))
   "
   [dst & [srcs]]
-  (tmp/add-sync! (tmpreg) dst srcs))
+  (tmp/add-sync! tmpreg dst srcs))
 
 (def ^:private src-filters (atom []))
 
@@ -165,19 +165,18 @@
            deletes  (set/difference outfiles (set keepers))]
        (when (seq keepers)
          (doseq [f deletes] (.delete f))
-         (tmp/sync! (tmpreg)))))
+         (tmp/sync! tmpreg))))
   ([dest & srcs]
      (apply file/sync :hash dest srcs)))
 
-(defn ignored?
+(def ignored?
   "Returns truthy if the file f is ignored in the user's gitignore config."
-  [f]
-  ((get-in @boot-env [:system :gitignore]) f))
+  (git/make-gitignore-matcher))
 
 (defn tmpfile?
   "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
   [f]
-  (tmp/tmpfile? (tmpreg) f))
+  (tmp/tmpfile? tmpreg f))
 
 (defn mktmp!
   "Create a temp file and return its `File` object. If `mktmp!` has already 
@@ -185,7 +184,7 @@
   `name` argument can be used to customize the temp file name (useful for
   creating temp files with a specific file extension, for example)."
   [key & [name]]
-  (tmp/mk! (tmpreg) key name))
+  (tmp/mk! tmpreg key name))
 
 (defn mktmpdir!
   "Create a temp directory and return its `File` object. If `mktmpdir!` has
@@ -193,7 +192,7 @@
   deleted. The optional `name` argument can be used to customize the temp
   directory name, as with `mktmp!` above."
   [key & [name]]
-  (tmp/mkdir! (tmpreg) key name))
+  (tmp/mkdir! tmpreg key name))
 
 (def outdirs
   "Atom containing a vector of File objects--directories created by `mkoutdir!`.
@@ -226,7 +225,7 @@
 (defn unmk!
   "Delete the temp/out file or directory created with the given `key`."
   [key]
-  (tmp/unmk! (tmpreg) key))
+  (tmp/unmk! tmpreg key))
 
 (defn out-files
   "Returns a seq of `java.io.File` objects--the contents of directories created
@@ -310,7 +309,11 @@
         ->app  (fn [[x & xs]] (if-not (seq xs) x `(comp ~x ~@xs)))]
     `((~(->app (map ->list argv)) #(do (sync!) %)) (prep-build!))))
 
-;; ## Low-Level Tasks / Task Helpers
+(defn default-task
+  [& args]
+  (fn [continue] (fn [event] (println "hello world") (continue event))))
+
+;; ## lowl-Level Tasks / Task Helpers
 
 (def ^:dynamic *event* nil)
 

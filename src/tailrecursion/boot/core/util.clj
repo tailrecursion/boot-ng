@@ -6,6 +6,10 @@
    [clojure.stacktrace :as trace]
    [clojure.pprint     :as pprint]))
 
+(defmacro with-future-fn [expr]
+  `(let [f# (future ~expr)]
+     (fn [& args#] (apply @f# args#))))
+
 (defmacro guard
   "Returns nil instead of throwing exceptions."
   [expr & [default]]
@@ -78,5 +82,6 @@
     (map #(vector (.getName %) (.getInputStream jar %)))
     (into {})))
 
-(defn pp      [expr] (pprint/write expr :dispatch pprint/code-dispatch))
-(defn pp-str  [expr] (with-out-str (pp expr)))
+(defn pp              [expr] (pprint/write expr :dispatch pprint/code-dispatch))
+(defn pp-str          [expr] (with-out-str (pp expr)))
+(defn read-string-all [s]    (read-string (str "(" s "\n)")))
