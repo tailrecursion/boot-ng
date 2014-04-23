@@ -62,6 +62,11 @@
     `(do (require 'tailrecursion.boot-classloader)
          (tailrecursion.boot-classloader/glob-match? ~pattern ~path))))
 
+(defn parse-opts [& args]
+  (eval-in-cl2
+    `(do (require 'clojure.tools.cli)
+         (clojure.tools.cli/parse-opts ~@args))))
+
 (defn make-pod [& {:keys [src-paths] :as env}]
   (let [env   (prep-env env)
         clj?  #(= 'org.clojure/clojure (first (:dep %)))

@@ -1,10 +1,10 @@
 (ns tailrecursion.boot
   (:require
-   [clojure.java.io                     :as io]
-   [clojure.string                      :as string]
-   [clojure.stacktrace                  :as trace]
-   [tailrecursion.boot.core.util        :as util]
-   [tailrecursion.boot.core             :as core :refer [+env+ +boot-dir+]])
+   [clojure.java.io              :as io]
+   [clojure.string               :as string]
+   [clojure.stacktrace           :as trace]
+   [tailrecursion.boot.core.util :as util]
+   [tailrecursion.boot.core      :as core :refer [+env+ +boot-dir+]])
   (:gen-class))
 
 (defn usage []
@@ -41,6 +41,11 @@
          `(core/boot ~@argv*))
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
+(defn parse-opts [args]
+  (let [opts [["-P" "--no-profile"]]]
+    ((juxt :errors :options :arguments)
+     (core/parse-opts args opts :in-order true))))
+
 (defn -main [& [arg0 & args :as args*]]
   (binding [*out* (util/auto-flush *out*)
             *err* (util/auto-flush *err*)]
@@ -54,11 +59,13 @@
                           (script? bootscript) [bootscript args*]
                           :else                [nil args*])
             boot?       (contains? #{nil bootscript} arg0)
+            [errs opts args] (if boot? (parse-opts args) [nil nil args])
+            profile?    (and boot? (not (:no-profile opts)))
             cljarg      (parse-cli args)
             ex          (when (string? cljarg) cljarg)
             args*       (when-not (string? cljarg) cljarg)
             bootforms   (some->> arg0 slurp util/read-string-all)
-            userforms   (when boot? (some->> userscript slurp util/read-string-all))
+            userforms   (when profile? (some->> userscript slurp util/read-string-all))
             scriptforms (emit boot? args args* ex (concat () userforms bootforms))
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
         (#'core/init! :default-task core/default-task)

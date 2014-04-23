@@ -358,8 +358,16 @@
 (defn make-pod
   "FIXME: document"
   [& args]
-  (let [pod (future (apply loader/make-pod args))] #(@pod %)))
+  (let [pod       (future (apply loader/make-pod args))
+        {f :main} (->> args (partition 2) (map vec) (into {}))
+        ns        (when-let [x (and f (namespace f))] (symbol x))]
+    (if-not ns #(@pod %) #(@pod `(do (require '~ns) (~f ~@%&))))))
 
+(defn parse-opts
+  "Parse command line options using clojure.tools.cli in a pod."
+  [args argspecs & options]
+  (apply loader/parse-opts (vec args) (vec argspecs) options))
+  
 (defn src-files
   "Returns a seq of files in :src-paths."
   []
