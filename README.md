@@ -12,6 +12,8 @@ build environment**.
 * The boot build environment provides facilities to manage any Clojure build
   process a programmer can imagine.
 
+    1. FIXME
+
 ## Install
 
 FIXME: How to doing?
