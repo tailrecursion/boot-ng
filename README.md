@@ -9,8 +9,8 @@ build environment**.
   means to have single file, self-contained scripts in Clojure that can have
   dependencies on Maven artifacts but aren't part of a project or uberjar.
 
-* The boot build environment provides the facilities needed to manage any
-  Clojure build process a programmer can imagine.
+* The boot build environment provides facilities to manage any Clojure build
+  process a programmer can imagine.
 
 ## Install
 
