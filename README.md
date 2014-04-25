@@ -2,107 +2,51 @@
 
 # Boot
 
-Boot is a shell interpreter for scripts written in Clojure. It is designed to be
-used with the “shebang” style of shell scripts to provide a simple means to have
-single file, self-contained scripts in Clojure that can include dependencies and
-so forth but don't need to be part of a project or uberjar. Also, boot is a
-Clojure build tool.
+Boot is a shell interpreter for scripts written in Clojure and a Clojure build
+environment. It can be used with the “shebang” style of shell scripts to provide
+a simple means to have single file, self-contained scripts in Clojure that can
+have dependencies on Maven artifacts aren't part of a project or uberjar. The
+boot build environment provides the facilities needed to manage any Clojure build
+process a programmer can imagine.
 
-## Overview
+## Install
 
-Boot consists of two parts: the boot **loader** (this project), and the boot
-**core**.
+FIXME: How to doing?
 
-* **The boot loader is a Clojure program in executable uberjar format.** The
-  purpose of the loader is to add the boot core dependency to the classpath
-  (fetching it from Clojars if necessary) and then hand off execution to the
-  `-main` function defined there. The loader is designed to be as small, simple,
-  and stable as possible, because updating to a new version is relatively
-  awkward and it's important that scripts be runnable even if they were written
-  for an older version of the API.
+## Scripting Clojure
 
-* **The boot core is a Maven dependency containing all of the actual boot
-  logic.** Since it's loaded into the loader dynamically it can be updated
-  easily, without requiring changes to the loader. The core version is specified
-  in the script file to provide repeatability–scripts pull in everything they
-  need to run, including the boot core itself. In addition to the machinery for
-  interpreting Clojure scripts, the core also contains a number of features
-  specific to boot's other role as a build tool for Clojure projects.
-
-### Clojure Scripts
-
-Boot scripts have three parts: the **shebang**, the **core version declaration**,
-and a number of (optional) **top level forms**.
-
-The shebang tells your shell to use the boot loader to interpret the script:
-
-```clojure
-#!/usr/bin/env boot
-```
-
-The core version declaration tells the boot loader which version of the boot
-core to use:
-
-```clojure
-#tailrecursion.boot.core/version "2.0.0"
-```
-
-Any remaining forms in the script file are evaluated in the boot environment:
-
-```clojure
-(set-env! :dependencies '[[riddley "0.3.4"]])
-(require '[clojure.string :refer [join]])
-
-(defn -main [& args]
-  (println (join " " ["hello," "world!"]))
-  (System/exit 0))
-```
-
-## Getting Started
-
-To build boot you will need:
-
-* Java 1.6+
-* [Leiningen][4] 2
-* GNU Make
-
-Build and install boot:
-
-```
-$ git clone git@github.com:tailrecursion/boot
-$ cd boot
-$ make boot
-$ mv ./boot ~/bin/boot # or anywhere else in your $PATH
-```
-
-### Hello World
-
-A simple example to get started:
+To get started let's make a Hello World script (of course). Create a file named
+`hello.boot` (boot scripts must have the `.boot` extension):
 
 ```clojure
 #!/usr/bin/env boot
 
-#tailrecursion.boot.core/version "2.0.0"
-
 (defn -main [& args]
-  (println "hello, world!")
-  (System/exit 0))
+  (println "hello, world!"))
 ```
 
-Write that to a file, say `build.boot`, set execute permissions on the file, and
-run it in the terminal to enjoy a friendly greeting.
+Make the script executable:
 
-> Note: scripts interpreted by boot must have the `.boot` file extension.
+```
+$ chmod a+x hello.boot
+```
+
+Now you can run it:
+
+```
+$ ./hello.boot
+hello, world
+```
+
+Good job dude!
 
 ### Script Dependencies
 
-Scripts can add Maven repositories and/or dependencies at runtime using
-`set-env!`:
+Scripts can add Maven dependencies and/or directories to the class path  at
+runtime using `set-env!`, like this:
 
 ```clojure
 #!/usr/bin/env boot
-
-#tailrecursion.boot.core/version "2.0.0"
 
 (set-env!
   :repositories #{"http://me.com/maven-repo"}

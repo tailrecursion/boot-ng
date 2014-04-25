@@ -234,7 +234,10 @@
   (->> @outdirs (mapcat file-seq) (filter #(.isFile %))))
 
 (defn deps
-  "FIXME: document"
+  "Get the contents of dependency Jar files, in dependency order (topological
+  sorting). A seq of pairs is returned. Each pair describes a dependency Jar
+  file, where the first item in the pair is the Jar file path and the second
+  item is a map of resource paths and their associated input streams."
   []
   (->> @loader/dep-jars
     (map #(JarFile. (io/file %)))
@@ -297,7 +300,8 @@
      (merge event {:id (gensym) :time (System/currentTimeMillis)})))
 
 (defn prep-build!
-  "FIXME: document"
+  "Prepare for the next build cycle. This function must be called before each
+  cycle. Returns a new event map which may be passed to the build pipeline."
   [& args]
   (doseq [f @outdirs] (tmp/make-file! ::tmp/dir f))
   (apply make-event args))
@@ -310,6 +314,7 @@
     `((~(->app (map ->list argv)) #(do (sync!) %)) (prep-build!))))
 
 (defn default-task
+  "FIXME: remove before flight (temporary hack until help task exists)"
   [& args]
   (fn [continue] (fn [event] (println "hello world") (continue event))))
 
@@ -356,9 +361,25 @@
 ;; ## Public Utility Functions
 
 (defn make-pod
-  "FIXME: document"
+  "Create a new pod. Pods are segregated Clojure environments where dependencies
+  can be loaded without affecting the parent environment's class path. This
+  function accepts arguments in the form of environment key-value pairs, similar
+  to `set-env!` above. The special `:main` key allows the caller to specify a
+  particular function in the pod which will then be callable as if it were a
+  regular function in the parent environment.
+
+  Example:
+
+    (def baz (make-pod :dependencies '[[foo/bar \"0.1.0\"]] :main 'foo.bar/baz))
+
+    (baz \"asdf\" \"qwer\")
+
+  Note: No objects can be passed between the parent and the pod environments.
+  However, Clojure data is fine because it's serialized at the boundary (it's
+  printed on one side and read on the other)."
   [& args]
-  (let [pod       (future (apply loader/make-pod args))
+  (let [env       (-> (get-env) loader/prep-env (dissoc :dependencies))
+        pod       (future (apply loader/make-pod (merge env args)))
         {f :main} (->> args (partition 2) (map vec) (into {}))
         ns        (when-let [x (and f (namespace f))] (symbol x))]
     (if-not ns #(@pod %) #(@pod `(do (require '~ns) (~f ~@%&))))))
