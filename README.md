@@ -7,7 +7,7 @@ build environment**.
 
 * It can be used with the “shebang” style of shell scripts to provide a simple
   means to have single file, self-contained scripts in Clojure that can have
-  dependencies on Maven artifacts aren't part of a project or uberjar.
+  dependencies on Maven artifacts but aren't part of a project or uberjar.
 
 * The boot build environment provides the facilities needed to manage any
   Clojure build process a programmer can imagine.
