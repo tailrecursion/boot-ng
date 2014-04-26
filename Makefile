@@ -28,7 +28,7 @@ boot: build
 	chmod 0755 boot
 	@echo "*** Done. Created boot executable: ./boot ***"
 
-deploy: clean build
+deploy: boot
 	lein pom
-	cp target/boot-*-standalone.jar target/boot.jar
+	cp ./boot target/boot.jar
 	scp pom.xml target/boot.jar clojars@clojars.org:

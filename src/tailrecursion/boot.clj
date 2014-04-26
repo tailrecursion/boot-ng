@@ -4,6 +4,7 @@
    [clojure.string               :as string]
    [clojure.stacktrace           :as trace]
    [tailrecursion.boot.core.util :as util]
+   [tailrecursion.boot.util      :as task]
    [tailrecursion.boot.core      :as core :refer [+env+ +boot-dir+]])
   (:gen-class))
 
@@ -13,6 +14,9 @@
       "Usage: boot [arg ...]\n"
       "       boot <scriptfile.boot> [arg ...]\n")))
 
+(def boot-version
+  (-> 'tailrecursion/boot util/get-project (get 'tailrecursion/boot)))
+
 (defn read-cli [argv]
   (let [src (str "(" (string/join " " argv) "\n)")]
     (util/with-rethrow
@@ -20,7 +24,7 @@
       (format "Can't read command line as EDN: %s" src))))
 
 (defn parse-cli [argv]
-  (try (let [dfltsk `(((core/get-env :default-task)))
+  (try (let [dfltsk `(((-> :default-task core/get-env resolve)))
              ->expr #(cond (seq? %) % (vector? %) (list* %) :else (list %))]
          (or (seq (map ->expr (or (seq (read-cli argv)) dfltsk))) dfltsk))
     (catch Throwable e (with-out-str (trace/print-cause-trace e)))))
@@ -28,6 +32,7 @@
 (defn emit [boot? argv argv* edn-ex forms]
   `(~'(ns tailrecursion.boot.user
         (:require
+         [tailrecursion.boot.util :refer :all]
          [tailrecursion.boot.core :refer :all :exclude [deftask]]))
     (defmacro ~'deftask
       [~'& ~'args]
@@ -68,7 +73,9 @@
             userforms   (when profile? (some->> userscript slurp util/read-string-all))
             scriptforms (emit boot? args args* ex (concat () userforms bootforms))
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
-        (#'core/init! :default-task core/default-task)
+        (#'core/init!
+          :boot-version boot-version
+          :default-task 'tailrecursion.boot.util/help)
         (let [tmpd (core/mktmpdir! ::bootscript)
               file #(doto (apply io/file %&) io/make-parents)
               tmpf (.getPath (file tmpd "tailrecursion" "boot" "user.clj"))]
