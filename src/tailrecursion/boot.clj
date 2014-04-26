@@ -4,7 +4,6 @@
    [clojure.string               :as string]
    [clojure.stacktrace           :as trace]
    [tailrecursion.boot.core.util :as util]
-   [tailrecursion.boot.util      :as task]
    [tailrecursion.boot.core      :as core :refer [+env+ +boot-dir+]])
   (:gen-class))
 
@@ -47,7 +46,9 @@
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
 (defn parse-opts [args]
-  (let [opts [["-P" "--no-profile"]]]
+  (let [opts [["-P" "--no-profile"]
+              ["-h" "--help"]
+              ["-V" "--version"]]]
     ((juxt :errors :options :arguments)
      (core/parse-opts args opts :in-order true))))
 
@@ -73,6 +74,8 @@
             userforms   (when profile? (some->> userscript slurp util/read-string-all))
             scriptforms (emit boot? args args* ex (concat () userforms bootforms))
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
+        (when (:help    opts) (usage) (System/exit 0))
+        (when (:version opts) (println boot-version) (System/exit 0))
         (#'core/init!
           :boot-version boot-version
           :default-task 'tailrecursion.boot.util/help)

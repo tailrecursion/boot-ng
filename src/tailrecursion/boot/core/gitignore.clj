@@ -60,9 +60,11 @@
     (try (-> (git) :out string/trim io/file (parse-gitignore cwd)) (catch Throwable _))))
 
 (defn make-gitignore-matcher [& [$GIT_DIR]]
-  (let [cwd         (or $GIT_DIR (System/getProperty "user.dir")) 
-        gi-file?    #(= ".gitignore" (.getName %))
-        gitignores  (->> (io/file cwd) file-seq (filter gi-file?))
-        core-excl   (vec (or (core-excludes $GIT_DIR) []))
-        matchers    (into core-excl (mapcat parse-gitignore gitignores))]
-    (partial matches? matchers)))
+  (if-not (.isDirectory (io/file ".git"))
+    (constantly false)
+    (let [cwd         (or $GIT_DIR (System/getProperty "user.dir")) 
+          gi-file?    #(= ".gitignore" (.getName %))
+          gitignores  (->> (io/file cwd) file-seq (filter gi-file?))
+          core-excl   (vec (or (core-excludes $GIT_DIR) []))
+          matchers    (into core-excl (mapcat parse-gitignore gitignores))]
+      (partial matches? matchers))))

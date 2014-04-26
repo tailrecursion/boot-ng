@@ -57,10 +57,6 @@
   "Atom containing environment key/value pairs."
   (atom nil))
 
-(def ^:private gitignore
-  "The gitignore matcher instance."
-  (util/with-future-fn (git/make-gitignore-matcher)))
-
 (def ^:private tmpreg
   "The managed temporary file registry."
   (tmp/init! (tmp/registry (io/file +boot-dir+ "tmp"))))
@@ -171,7 +167,7 @@
 
 (def ignored?
   "Returns truthy if the file f is ignored in the user's gitignore config."
-  (git/make-gitignore-matcher))
+  (util/with-future-fn (git/make-gitignore-matcher)))
 
 (defn tmpfile?
   "Returns truthy if the file f is a tmpfile managed by the tmpregistry."
