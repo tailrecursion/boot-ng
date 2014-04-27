@@ -2,16 +2,15 @@
   (:require
    [clojure.java.io                     :as io]
    [tailrecursion.boot.core.classlojure :as cl]
+   [tailrecursion.boot.core.env         :as env]
    [tailrecursion.boot.core.util        :as util])
   (:import
    [java.net URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
 (defn make-classloader []
-  (let [home (System/getProperty "user.home")
-        tmp  (doto (io/file home ".boot") .mkdirs)
-        path (-> "boot-classloader-resource-path" io/resource slurp .trim)
-        jar  (io/file tmp path)]
+  (let [path (-> "boot-classloader-resource-path" io/resource slurp .trim)
+        jar  (io/file env/+boot-dir+ path)]
     (when (.createNewFile jar) (util/copy-resource path jar))
     (let [cl (cl/classlojure (str "file:" (.getPath jar)))] #(cl/eval-in cl %))))
 

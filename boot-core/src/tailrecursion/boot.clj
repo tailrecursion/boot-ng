@@ -3,8 +3,9 @@
    [clojure.java.io              :as io]
    [clojure.string               :as string]
    [clojure.stacktrace           :as trace]
-   [tailrecursion.boot.core.util :as util]
-   [tailrecursion.boot.core      :as core :refer [+env+ +boot-dir+]]))
+   [tailrecursion.boot.core      :as core]
+   [tailrecursion.boot.core.env  :as env]
+   [tailrecursion.boot.core.util :as util]))
 
 (defn usage []
   (println
@@ -54,8 +55,8 @@
     (util/exit-ok
       (let [dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
             script?     #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
-            bootscript  (io/file (or (:BOOT_SCRIPT +env+) "build.boot"))
-            userscript  (script? (io/file +boot-dir+ "profile.boot"))
+            bootscript  (io/file (or (:BOOT_SCRIPT env/+env+) "build.boot"))
+            userscript  (script? (io/file env/+boot-dir+ "profile.boot"))
             [arg0 args] (cond
                           (script? arg0)       [arg0 args]
                           (script? bootscript) [bootscript args*]

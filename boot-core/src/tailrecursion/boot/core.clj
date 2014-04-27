@@ -4,6 +4,7 @@
    [clojure.java.io                     :as io]
    [clojure.set                         :as set]
    [clojure.walk                        :as walk]
+   [tailrecursion.boot.core.env         :as env]
    [tailrecursion.boot.core.file        :as file]
    [tailrecursion.boot.core.util        :as util]
    [tailrecursion.boot.core.gitignore   :as git]
@@ -14,7 +15,7 @@
    [java.net URLClassLoader URL]
    java.lang.management.ManagementFactory))
 
-(declare +boot-dir+ get-env set-env! boot-env on-env! merge-env! out-files)
+(declare get-env set-env! boot-env on-env! merge-env! out-files)
 
 ;; ## Utility Functions
 ;;
@@ -41,25 +42,13 @@
      :out-path      "out"
      :src-paths     #{}}))
 
-(def +env+
-  "Environment variables used by boot to configure itself."
-  {:HOME         (System/getenv "HOME")
-   :BOOT_DIR     (System/getenv "BOOT_DIR")
-   :BOOT_SCRIPT  (System/getenv "BOOT_SCRIPT")})
-
-(def +boot-dir+
-  "Directory where boot keeps classloader jar files, rc config scripts, etc."
-  (let [envdir (:BOOT_DIR +env+)
-        dfldir (io/file (:HOME +env+) ".boot")]
-    (doto (io/file (or envdir dfldir)) .mkdirs)))
-
 (def ^:private boot-env
   "Atom containing environment key/value pairs."
   (atom nil))
 
 (def ^:private tmpreg
   "The managed temporary file registry."
-  (tmp/init! (tmp/registry (io/file +boot-dir+ "tmp"))))
+  (tmp/init! (tmp/registry (io/file env/+boot-dir+ "tmp"))))
 
 (defn- init!
   "Initialize the boot environment. This is normally run once by boot at startup.
