@@ -9,22 +9,16 @@ help:
 
 clean:
 	rm -f boot
-	rm -rf resources/*
-	(cd boot-classloader; lein clean)
 	lein clean
 
 build: clean
-	mkdir -p resources
-	(cd boot-classloader; lein uberjar)
-	cp boot-classloader/target/boot-classloader*-standalone.jar resources
-	(cd resources; echo `ls boot-classloader-*-standalone.jar` > boot-classloader-resource-path)
 	lein with-profile uber uberjar
 
 boot: build
 	echo '#!/usr/bin/env bash' > boot
 	echo 'java $$JVM_OPTS -jar $$0 "$$@"' >> boot
 	echo 'exit' >> boot
-	cat target/boot*-standalone.jar >> boot
+	cat target/boot-*-standalone.jar >> boot
 	chmod 0755 boot
 	@echo "*** Done. Created boot executable: ./boot ***"
 

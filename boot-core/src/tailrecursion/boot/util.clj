@@ -39,7 +39,7 @@
 (defn- version-str []
   (let [proj "tailrecursion/boot"
         url  "http://github.com/tailrecursion/boot"]
-    (format "%s %s: %s" proj (core/get-env :boot-version) url)))
+    (format "%s %s\nDocumentation: %s" proj (core/get-env :boot-version) url)))
 
 (defn- available-tasks [sym]
   (let [base  {nil (the-ns sym)}
@@ -97,7 +97,8 @@
          (->
            (mapv
              #(format % "boot")
-             ["%s OPTS task ..."
+             ["%s --update"
+              "%s OPTS task ..."
               "%s OPTS [task arg arg] ..."
               "%s OPTS [help task]"])
            (->> (pad-left "Usage: ") println))
@@ -105,6 +106,7 @@
            (pad-left "OPTS:  "
              (->
                [["" ""]
+                ["--update"        "Force update boot core."]
                 ["-P --no-profile" "Skip loading profile.boot."]
                 ["-h --help"       "Print basic usage info."]
                 ["-V --version"    "Print boot version info."]]

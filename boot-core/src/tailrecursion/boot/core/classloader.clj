@@ -17,7 +17,7 @@
 
 (def eval-in-cl2  (let [cl (future (make-classloader))] #(@cl %)))
 (def dep-jars     (atom []))
-(def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot)) [])))
+(def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot-core)) [])))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
 
 (defn prep-env [env]

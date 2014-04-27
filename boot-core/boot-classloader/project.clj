@@ -1,4 +1,4 @@
-(defproject tailrecursion/boot-classloader "0.1.0-SNAPSHOT"
+(defproject tailrecursion/boot-classloader "0.1.1"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure             "1.5.1"]
                  [org.clojure/tools.cli           "0.3.1"]
                  [org.springframework/spring-core "1.2.2"]
-                 [com.cemerick/pomegranate        "0.2.0" :exclusions [org.clojure/clojure]]]
+                 [com.cemerick/pomegranate        "0.2.0"]]
   :main ^:skip-aot tailrecursion.boot-classloader
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
