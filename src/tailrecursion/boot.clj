@@ -55,7 +55,10 @@
 
 (defn parse-opts [args]
   (let [opts [["-U" "--update"]
-              ["-o" "--offline"]]]
+              ["-o" "--offline"]
+              ["-P" "--no-profile"]
+              ["-h" "--help"]
+              ["-V" "--version"]]]
     ((juxt :errors :options :arguments)
      (cli/parse-opts args opts :in-order true))))
 
@@ -72,7 +75,7 @@
             core-pod (make-cl clj-url core-url)]
         (cl/eval-in core-pod
           `(do (require 'tailrecursion.boot)
-               (tailrecursion.boot/-main ~(boot-version) ~@args))))
+               (tailrecursion.boot/-main ~(boot-version) ~@args*))))
       (flush)
       (System/exit 0))
     (catch Throwable e
