@@ -7,6 +7,9 @@
    [org.springframework.util AntPathMatcher])
   (:gen-class))
 
+(def update? (atom nil))
+(def offline? (atom nil))
+
 (defn warn
   [& more]
   (binding [*out* *err*] (apply printf more) (flush)))
@@ -54,11 +57,13 @@
     :coordinates        (:dependencies env)
     :repositories       (when-let [repos (:repositories env)]
                           (->> repos
-                            (map (juxt #((if (map? %) :url str) %) identity))
+                            (map #(if (map? %) % {:url %}))
+                            (map #(if-not @update? % (assoc % :update :always)))
+                            (map (juxt :url identity))
                             (into {})))
-    :local-repo         (:local-repo   env)
-    :offline?           (:offline?     env)
-    :mirrors            (:mirrors      env)
+    :local-repo         (:local-repo env)
+    :offline?           (or @offline? (:offline? env))
+    :mirrors            (:mirrors env)
     :proxy              (or (:proxy env) (get-proxy-settings))
     :transfer-listener  (or (:transfer-listener env) transfer-listener)))
 

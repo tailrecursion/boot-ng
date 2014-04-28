@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io                :as io]
    [classlojure.core               :as cl]
+   [clojure.tools.cli              :as cli]
    [clojure.stacktrace             :as trace]
    [clojure.pprint                 :as pprint]
    [tailrecursion.boot-classloader :as loader])
@@ -13,14 +14,17 @@
 (defn url-str [deps]
   (->> deps first :jar io/file .getPath (str "file:")))
 
+(def clojars       {:url "http://clojars.org/repo/"})
+(def maven-central {:url "http://repo1.maven.org/maven2/"})
+
 (defn clj-dep []
   (loader/resolve-dependencies!
-    {:repositories #{"http://repo1.maven.org/maven2/" "http://clojars.org/repo/"}
+    {:repositories #{maven-central}
      :dependencies '[[org.clojure/clojure "1.5.1"]]}))
 
 (defn core-dep []
   (loader/resolve-dependencies!
-    {:repositories #{"http://clojars.org/repo/"}
+    {:repositories #{clojars}
      :dependencies '[[tailrecursion/boot-core "2.0.0-SNAPSHOT"]]}))
 
 (defn- dyn-classloader [urls ext]
@@ -49,22 +53,30 @@
 (defn boot-version []
   (-> 'tailrecursion/boot get-project (get 'tailrecursion/boot)))
 
-(defn update []
-  (->> (-> (core-dep) url-str (subs 5) io/file .getParentFile file-seq)
-    (filter #(.isFile %))
-    (mapv #(.delete %))))
+(defn parse-opts [args]
+  (let [opts [["-U" "--update"]
+              ["-o" "--offline"]]]
+    ((juxt :errors :options :arguments)
+     (cli/parse-opts args opts :in-order true))))
 
-(defn -main [& args]
+(defn -main [& [arg0 & args :as args*]]
   (try
-    (if (= args '("--update"))
-      (update)
+    (let [dotboot?   #(.endsWith (.getName (io/file %)) ".boot")
+          script?    #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
+          args       (if (script? arg0) args args*)
+          [_ opts _] (parse-opts args)]
+      (when (:update opts) (reset! loader/update? true))
+      (when (:offline opts) (reset! loader/offline? true))
       (let [clj-url  (url-str (clj-dep))
             core-url (url-str (core-dep))
             core-pod (make-cl clj-url core-url)]
         (cl/eval-in core-pod
           `(do (require 'tailrecursion.boot)
-               (tailrecursion.boot/-main ~(boot-version) ~@args)))))
-    (System/exit 0)
+               (tailrecursion.boot/-main ~(boot-version) ~@args))))
+      (flush)
+      (System/exit 0))
     (catch Throwable e
-      (trace/print-cause-trace e)
-      (System/exit 1))))
+      (binding [*out* *err*]
+        (trace/print-cause-trace e)
+        (flush)
+        (System/exit 1)))))

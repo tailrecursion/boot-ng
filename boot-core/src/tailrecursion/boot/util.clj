@@ -97,8 +97,7 @@
          (->
            (mapv
              #(format % "boot")
-             ["%s --update"
-              "%s OPTS task ..."
+             ["%s OPTS task ..."
               "%s OPTS [task arg arg] ..."
               "%s OPTS [help task]"])
            (->> (pad-left "Usage: ") println))
@@ -106,7 +105,8 @@
            (pad-left "OPTS:  "
              (->
                [["" ""]
-                ["--update"        "Force update boot core."]
+                ["-U --update"     "Force update snapshot deps."]
+                ["-o --offline"    "Don't check network for deps."]
                 ["-P --no-profile" "Skip loading profile.boot."]
                 ["-h --help"       "Print basic usage info."]
                 ["-V --version"    "Print boot version info."]]

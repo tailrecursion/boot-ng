@@ -1,17 +1,12 @@
 (ns tailrecursion.boot
   (:require
-   [clojure.java.io              :as io]
-   [clojure.string               :as string]
-   [clojure.stacktrace           :as trace]
-   [tailrecursion.boot.core      :as core]
-   [tailrecursion.boot.core.env  :as env]
-   [tailrecursion.boot.core.util :as util]))
-
-(defn usage []
-  (println
-    (str
-      "Usage: boot [arg ...]\n"
-      "       boot <scriptfile.boot> [arg ...]\n")))
+   [clojure.java.io                     :as io]
+   [clojure.string                      :as string]
+   [clojure.stacktrace                  :as trace]
+   [tailrecursion.boot.core             :as core]
+   [tailrecursion.boot.core.env         :as env]
+   [tailrecursion.boot.core.util        :as util]
+   [tailrecursion.boot.core.classloader :as loader]))
 
 (defn read-cli [argv]
   (let [src (str "(" (string/join " " argv) "\n)")]
@@ -43,7 +38,9 @@
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
 (defn parse-opts [args]
-  (let [opts [["-P" "--no-profile"]
+  (let [opts [["-U" "--update"]
+              ["-o" "--offline"]
+              ["-P" "--no-profile"]
               ["-h" "--help"]
               ["-V" "--version"]]]
     ((juxt :errors :options :arguments)
@@ -53,7 +50,8 @@
   (binding [*out* (util/auto-flush *out*)
             *err* (util/auto-flush *err*)]
     (util/exit-ok
-      (let [dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
+      (let [
+            dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
             script?     #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
             bootscript  (io/file (or (:BOOT_SCRIPT env/+env+) "build.boot"))
             userscript  (script? (io/file env/+boot-dir+ "profile.boot"))
@@ -71,7 +69,8 @@
             userforms   (when profile? (some->> userscript slurp util/read-string-all))
             scriptforms (emit boot? args args* ex (concat () userforms bootforms))
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
-        (when (:help    opts) (usage) (System/exit 0))
+        (when (:offline opts) (loader/offline!))
+        (when (:update  opts) (loader/update-always!))
         (when (:version opts) (println boot-version) (System/exit 0))
         (#'core/init!
           :boot-version boot-version
