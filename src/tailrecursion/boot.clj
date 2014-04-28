@@ -64,10 +64,10 @@
 
 (defn -main [& [arg0 & args :as args*]]
   (try
-    (let [dotboot?   #(.endsWith (.getName (io/file %)) ".boot")
-          script?    #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
-          args       (if (script? arg0) args args*)
-          [_ opts _] (parse-opts args)]
+    (let [dotboot?        #(.endsWith (.getName (io/file %)) ".boot")
+          script?         #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
+          [_ opts args**] (parse-opts (if (script? arg0) args args*))
+          args            (concat (if (script? arg0) [arg0] []) args**)]
       (when (:update opts) (reset! loader/update? true))
       (when (:offline opts) (reset! loader/offline? true))
       (let [clj-url  (url-str (clj-dep))
@@ -75,7 +75,7 @@
             core-pod (make-cl clj-url core-url)]
         (cl/eval-in core-pod
           `(do (require 'tailrecursion.boot)
-               (tailrecursion.boot/-main ~(boot-version) ~@args*))))
+               (tailrecursion.boot/-main ~(boot-version) ~opts ~@args))))
       (flush)
       (System/exit 0))
     (catch Throwable e

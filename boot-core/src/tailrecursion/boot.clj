@@ -37,21 +37,11 @@
          `(core/boot ~@argv*))
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
-(defn parse-opts [args]
-  (let [opts [["-U" "--update"]
-              ["-o" "--offline"]
-              ["-P" "--no-profile"]
-              ["-h" "--help"]
-              ["-V" "--version"]]]
-    ((juxt :errors :options :arguments)
-     (core/parse-opts args opts :in-order true))))
-
-(defn -main [boot-version & [arg0 & args :as args*]]
+(defn -main [boot-version opts & [arg0 & args :as args*]]
   (binding [*out* (util/auto-flush *out*)
             *err* (util/auto-flush *err*)]
     (util/exit-ok
-      (let [
-            dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
+      (let [dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
             script?     #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
             bootscript  (io/file (or (:BOOT_SCRIPT env/+env+) "build.boot"))
             userscript  (script? (io/file env/+boot-dir+ "profile.boot"))
@@ -60,8 +50,7 @@
                           (script? bootscript) [bootscript args*]
                           :else                [nil args*])
             boot?       (contains? #{nil bootscript} arg0)
-            [errs opts args] (if boot? (parse-opts args) [nil nil args])
-            profile?    (and boot? (not (:no-profile opts)))
+            profile?    (not (:no-profile opts))
             cljarg      (parse-cli args)
             ex          (when (string? cljarg) cljarg)
             args*       (when-not (string? cljarg) cljarg)
