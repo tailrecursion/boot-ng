@@ -61,6 +61,7 @@
         (when (:offline opts) (loader/offline!))
         (when (:update  opts) (loader/update-always!))
         (when (:version opts) (println boot-version) (System/exit 0))
+        (when (:script  opts) (print scriptstr) (System/exit 0))
         (#'core/init!
           :boot-version boot-version
           :default-task 'tailrecursion.boot.util/help)

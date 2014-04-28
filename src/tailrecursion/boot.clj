@@ -57,6 +57,7 @@
   (let [opts [["-U" "--update"]
               ["-o" "--offline"]
               ["-P" "--no-profile"]
+              ["-s" "--script"]
               ["-h" "--help"]
               ["-V" "--version"]]]
     ((juxt :errors :options :arguments)

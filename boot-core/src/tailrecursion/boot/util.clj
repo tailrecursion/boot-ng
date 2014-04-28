@@ -105,10 +105,11 @@
            (pad-left "OPTS:  "
              (->
                [["" ""]
-                ["-U --update"     "Force update snapshot deps."]
-                ["-o --offline"    "Don't check network for deps."]
-                ["-P --no-profile" "Skip loading profile.boot."]
-                ["-h --help"       "Print basic usage info."]
+                ["-h --help"       "Print basic usage and help info."]
+                ["-o --offline"    "Don't check network for dependencies."]
+                ["-P --no-profile" "Skip loading of profile.boot script."]
+                ["-s --script"     "Print generated boot script for debugging."]
+                ["-U --update"     "Force update snapshot dependencies."]
                 ["-V --version"    "Print boot version info."]]
                (table/table :style :none)
                with-out-str
