@@ -19,15 +19,15 @@
 (def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot-core)) [])))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
 
-(defn offline! []
+(defn offline! [offline?]
   (eval-in-cl2
     `(do (require 'tailrecursion.boot-classloader)
-         (reset! tailrecursion.boot-classloader/offline? true))))
+         (reset! tailrecursion.boot-classloader/offline? ~offline?))))
 
-(defn update-always! []
+(defn update! [when?]
   (eval-in-cl2
     `(do (require 'tailrecursion.boot-classloader)
-         (reset! tailrecursion.boot-classloader/update? true))))
+         (reset! tailrecursion.boot-classloader/update? ~when?))))
 
 (defn prep-env [env]
   (-> (merge dfl-env env)

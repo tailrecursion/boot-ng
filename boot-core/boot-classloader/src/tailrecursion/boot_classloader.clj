@@ -7,8 +7,8 @@
    [org.springframework.util AntPathMatcher])
   (:gen-class))
 
-(def update? (atom nil))
-(def offline? (atom nil))
+(def offline? (atom false))
+(def update?  (atom :daily))
 
 (defn warn
   [& more]
@@ -58,7 +58,7 @@
     :repositories       (when-let [repos (:repositories env)]
                           (->> repos
                             (map #(if (map? %) % {:url %}))
-                            (map #(if-not @update? % (assoc % :update :always)))
+                            (map #(if (contains? % :update) % (assoc % :update @update?)))
                             (map (juxt :url identity))
                             (into {})))
     :local-repo         (:local-repo env)

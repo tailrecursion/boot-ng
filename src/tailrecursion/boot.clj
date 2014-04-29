@@ -7,9 +7,28 @@
    [clojure.pprint                 :as pprint]
    [tailrecursion.boot-classloader :as loader])
   (:import
+   [java.io File]
    [java.net URL URLClassLoader]
+   [java.util.jar JarFile]
    [clojure.lang DynamicClassLoader])
   (:gen-class))
+
+(defmacro guard [expr]
+  `(try ~expr (catch Throwable e#)))
+
+(defn slurp-entry [jar-path entry-path]
+  (let [jar (JarFile. jar-path)]
+    (when-let [entry (.getEntry jar entry-path)]
+      (-> jar (.getInputStream entry) slurp))))
+
+(defn cli-opts! [deps]
+  (let [jar (-> deps first :jar)
+        cli "tailrecursion/boot/core/cli_opts.clj"]
+    (when-let [src (slurp-entry jar cli)]
+      (let [f (doto (File/createTempFile "cli_opts" ".clj") .deleteOnExit)
+            p (.getPath f)]
+        (doto p (spit src) load-file)))
+    deps))
 
 (defn url-str [deps]
   (->> deps first :jar io/file .getPath (str "file:")))
@@ -54,25 +73,29 @@
   (-> 'tailrecursion/boot get-project (get 'tailrecursion/boot)))
 
 (defn parse-opts [args]
-  (let [opts [["-U" "--update"]
-              ["-o" "--offline"]
-              ["-P" "--no-profile"]
-              ["-s" "--script"]
-              ["-h" "--help"]
-              ["-V" "--version"]]]
+  (require 'tailrecursion.boot.core.cli-opts)
+  (when-let [opts (resolve 'tailrecursion.boot.core.cli-opts/opts)]
     ((juxt :errors :options :arguments)
-     (cli/parse-opts args opts :in-order true))))
+     (cli/parse-opts args (var-get opts) :in-order true))))
 
 (defn -main [& [arg0 & args :as args*]]
   (try
-    (let [dotboot?        #(.endsWith (.getName (io/file %)) ".boot")
-          script?         #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
-          [_ opts args**] (parse-opts (if (script? arg0) args args*))
-          args            (concat (if (script? arg0) [arg0] []) args**)]
-      (when (:update opts) (reset! loader/update? true))
-      (when (:offline opts) (reset! loader/offline? true))
-      (let [clj-url  (url-str (clj-dep))
-            core-url (url-str (core-dep))
+    (reset! loader/offline? true)
+    (let [core-dep*          (guard (cli-opts! (core-dep)))
+          dotboot?           #(.endsWith (.getName (io/file %)) ".boot")
+          script?            #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
+          [errs opts args**] (when core-dep* (parse-opts (if (script? arg0) args args*)))
+          args               (concat (if (script? arg0) [arg0] []) args**)]
+      (when (and (seq errs) core-dep*)
+        (binding [*out* *err*]
+          (println (apply str (interpose "\n" errs)))
+          (System/exit 1)))
+      (when (:freshen opts) (reset! loader/update? :always))
+      (when (:no-freshen opts) (reset! loader/update? :never))
+      (reset! loader/offline? (:offline opts))
+      (let [fetch?   (and (not= :never @loader/update?) (not @loader/offline?))
+            clj-url  (url-str (clj-dep))
+            core-url (url-str (if fetch? (core-dep) core-dep*))
             core-pod (make-cl clj-url core-url)]
         (cl/eval-in core-pod
           `(do (require 'tailrecursion.boot)

@@ -8,6 +8,7 @@
    [tailrecursion.boot.core             :as core]
    [tailrecursion.boot.core.file        :as file]
    [tailrecursion.boot.core.conch       :as conch]
+   [tailrecursion.boot.core.cli-opts    :as opts]
    [tailrecursion.boot.core.table.core  :as table]))
 
 (defn- first-line [s] (when s (first (string/split s #"\n"))))
@@ -25,21 +26,16 @@
                trace# (with-out-str (trace/print-cause-trace e#))]
            (println (format ~fail trace# time#)))))))
 
-(defn- print-tasks [tasks]
+(defn- tasks-table [tasks]
   (let [get-task  #(-> % :name str)
-        get-desc  #(-> % :doc first-line)
-        get-row   (fn [x] [(get-task x) (get-desc x)])]
-    (with-out-str (table/table (into [["" ""]] (map get-row tasks)) :style :none))))
+        get-desc  #(-> % :doc first-line)]
+    (->> tasks (map (fn [x] ["" (get-task x) (get-desc x)])))))
 
-(defn- pad-left [thing lines]
-  (let [pad (apply str (repeat (count thing) " "))
-        pads (concat [thing] (repeat pad))]
-    (string/join "\n" (map (comp (partial apply str) vector) pads lines))))
+(defn- set-title [[[_ & xs] & zs] title] (into [(into [title] xs)] zs))
 
 (defn- version-str []
-  (let [proj "tailrecursion/boot"
-        url  "http://github.com/tailrecursion/boot"]
-    (format "%s %s\nDocumentation: %s" proj (core/get-env :boot-version) url)))
+  (format "Boot Version:  %s\nDocumentation: %s"
+    (core/get-env :boot-version) "http://github.com/tailrecursion/boot"))
 
 (defn- available-tasks [sym]
   (let [base  {nil (the-ns sym)}
@@ -92,30 +88,22 @@
   required into the boot script namespace for this medatada to be found."
   ([]
      (core/with-pre-wrap
-       (let [tasks (available-tasks 'tailrecursion.boot.user)]
+       (let [tasks (available-tasks 'tailrecursion.boot.user)
+             opts  (->> opts/opts (mapv (fn [[x y z]] ["" (str x " " y) z])))]
          (printf "%s\n\n" (version-str))
-         (->
-           (mapv
-             #(format % "boot")
-             ["%s OPTS task ..."
-              "%s OPTS [task arg arg] ..."
-              "%s OPTS [help task]"])
-           (->> (pad-left "Usage: ") println))
-         (printf "\n%s\n"
-           (pad-left "OPTS:  "
-             (->
-               [["" ""]
-                ["-h --help"       "Print basic usage and help info."]
-                ["-o --offline"    "Don't check network for dependencies."]
-                ["-P --no-profile" "Skip loading of profile.boot script."]
-                ["-s --script"     "Print generated boot script for debugging."]
-                ["-U --update"     "Force update snapshot dependencies."]
-                ["-V --version"    "Print boot version info."]]
-               (table/table :style :none)
-               with-out-str
-               (string/split #"\n"))))
-         (printf "\n%s\n\n"
-           (pad-left "Tasks: " (string/split (print-tasks tasks) #"\n"))))))
+         (printf "%s\n"
+           (-> [[""       ""]
+                ["Usage:" "boot OPTS task ..."]
+                [""       "boot OPTS [task arg arg] ..."]
+                [""       "boot OPTS [help task]"]]
+             (table/table :style :none)
+             with-out-str))
+         (printf "%s\n"
+           (-> [["" "" ""]]
+             (into (set-title (conj opts ["" "" ""]) "OPTS:"))
+             (into (set-title (tasks-table tasks) "Tasks:"))
+             (table/table :style :none)
+             with-out-str)))))
   ([task]
      (core/with-pre-wrap
        (let [task* (->> (available-tasks 'tailrecursion.boot.user)

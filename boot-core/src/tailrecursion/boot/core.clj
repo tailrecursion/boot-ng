@@ -225,8 +225,7 @@
   item is a map of resource paths and their associated input streams."
   []
   (->> @loader/dep-jars
-    (map #(JarFile. (io/file %)))
-    (map #(vector (.getName %) (util/entries %)))))
+    (map (comp #(vector (.getName %) (util/entries %)) #(JarFile. (io/file %))))))
 
 (defmacro deftask
   "Define a new task. Task definitions may contain nested task definitions.

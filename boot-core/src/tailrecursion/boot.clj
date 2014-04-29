@@ -61,12 +61,14 @@
             commented   (concat () userforms ['(comment "script")] bootforms)
             scriptforms (emit boot? args args* ex commented)
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
-        (when (:offline opts) (loader/offline!))
-        (when (:update  opts) (loader/update-always!))
-        (when (:version opts) (println boot-version) (System/exit 0))
-        (when (:script  opts) (print scriptstr) (System/exit 0))
+        (when (:offline    opts) (loader/offline! true))
+        (when (:no-freshen opts) (loader/update! :never))
+        (when (:freshen    opts) (loader/update! :always))
+        (when (:script     opts) (print scriptstr) (System/exit 0))
+        (when (:version    opts) (println boot-version) (System/exit 0))
         (#'core/init!
           :boot-version boot-version
+          :boot-options opts
           :default-task 'tailrecursion.boot.util/help)
         (let [tmpd (core/mktmpdir! ::bootscript)
               file #(doto (apply io/file %&) io/make-parents)

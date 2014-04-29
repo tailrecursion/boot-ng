@@ -3,4 +3,5 @@
   :url          "https://github.com/tailrecursion/boot"
   :license      {:name  "Eclipse Public License"
                  :url   "http://www.eclipse.org/legal/epl-v10.html"}
+  :aot          :all
   :dependencies [[org.clojure/clojure "1.5.1"]])
