@@ -25,19 +25,19 @@
         (:require
          [tailrecursion.boot.util :refer :all]
          [tailrecursion.boot.core :refer :all :exclude [deftask]]))
-    (~'defmacro ~'deftask
+    (defmacro ~'deftask
       [~'& ~'args]
-      (~'list* '~'deftask* ~'args))
-    ~'(comment "profile")
+      (list* '~'deftask* ~'args))
+    (comment "profile")
     ~@forms
-    ~'(comment "command line")
+    (comment "command line")
     ~(if boot?
        (if edn-ex
-         `(~'binding [~'*out* ~'*err*]
-            (~'print ~edn-ex)
-            (~'System/exit 1))
-         `(~'boot ~@argv*))
-       `(~'when-let [main# (~'resolve '~'-main)] (main# ~@argv)))))
+         `(binding [~'*out* ~'*err*]
+            (print ~edn-ex)
+            (System/exit 1))
+         `(core/boot ~@argv*))
+       `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
 (defn -main [boot-version opts & [arg0 & args :as args*]]
   (binding [*out* (util/auto-flush *out*)
@@ -58,7 +58,7 @@
             args*       (when-not (string? cljarg) cljarg)
             bootforms   (some->> arg0 slurp util/read-string-all)
             userforms   (when profile? (some->> userscript slurp util/read-string-all))
-            commented   (concat () userforms ['(comment "script")] bootforms)
+            commented   (concat () userforms [`(comment "script")] bootforms)
             scriptforms (emit boot? args args* ex commented)
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
         (when (:offline    opts) (loader/offline! true))
