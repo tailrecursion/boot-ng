@@ -361,12 +361,11 @@
   Note: No objects can be passed between the parent and the pod environments.
   However, Clojure data is fine because it's serialized at the boundary (it's
   printed on one side and read on the other)."
-  [& args]
-  (let [env       (-> (get-env) loader/prep-env (dissoc :dependencies))
-        pod       (future (apply loader/make-pod (merge env args)))
-        {f :main} (->> args (partition 2) (map vec) (into {}))
-        ns        (when-let [x (and f (namespace f))] (symbol x))]
-    (if-not ns #(@pod %) #(@pod `(do (require '~ns) (~f ~@%&))))))
+  [& {f :main :as args}]
+  (let [env (loader/prep-env (dissoc (get-env) :dependencies))
+        pod (apply loader/make-pod (mapcat identity (merge env args)))
+        ns  (when-let [x (and f (namespace f))] (symbol x))]
+    (if-not ns #(pod %) #(pod `(do (require '~ns) (~f ~@%&))))))
 
 (defn parse-opts
   "Parse command line options using clojure.tools.cli in a pod."

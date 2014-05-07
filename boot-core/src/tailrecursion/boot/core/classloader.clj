@@ -14,7 +14,7 @@
     (when (.createNewFile jar) (util/copy-resource path jar))
     (let [cl (cl/classlojure (str "file:" (.getPath jar)))] #(cl/eval-in cl %))))
 
-(def eval-in-cl2  (let [cl (future (make-classloader))] #(@cl %)))
+(def eval-in-cl2  (let [cl (make-classloader)] #(cl %)))
 (def dep-jars     (atom []))
 (def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot-core)) [])))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
@@ -42,11 +42,9 @@
 
 (defn add-dirs! [dirs]
   (when (seq dirs)
-    (let [meth  (doto (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))
-                  (.setAccessible true))
-          cldr  (ClassLoader/getSystemClassLoader)
-          dirs  (->> dirs (map io/file) (filter #(.exists %)) (map #(.. % toURI toURL)))]
-      (doseq [url dirs] (.invoke meth cldr (object-array [url]))))))
+    (let [cldr (.getContextClassLoader (Thread/currentThread))
+          dirs (->> dirs (map io/file) (filter #(.exists %)) (map #(.. % toURI toURL)))]
+      (doseq [url dirs] (.addURL cldr url)))))
 
 (defn resolve-deps! [env]
   (let [env (prep-env env)]

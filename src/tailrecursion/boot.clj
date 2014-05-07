@@ -1,11 +1,11 @@
 (ns tailrecursion.boot
   (:require
-   [clojure.java.io                :as io]
-   [classlojure.core               :as cl]
-   [clojure.tools.cli              :as cli]
-   [clojure.stacktrace             :as trace]
-   [clojure.pprint                 :as pprint]
-   [tailrecursion.boot-classloader :as loader])
+   [clojure.java.io                     :as io]
+   [tailrecursion.boot.core.classlojure :as cl]
+   [clojure.tools.cli                   :as cli]
+   [clojure.stacktrace                  :as trace]
+   [clojure.pprint                      :as pprint]
+   [tailrecursion.boot-classloader      :as loader])
   (:import
    [java.io File]
    [java.net URL URLClassLoader]
@@ -31,7 +31,7 @@
     deps))
 
 (defn url-str [deps]
-  (->> deps first :jar io/file .getPath (str "file:")))
+  (for [dep deps] (->> dep :jar io/file .getPath (str "file:"))))
 
 (def clojars       {:url "http://clojars.org/repo/"})
 (def maven-central {:url "http://repo1.maven.org/maven2/"})
@@ -45,18 +45,6 @@
   (loader/resolve-dependencies!
     {:repositories #{clojars}
      :dependencies '[[tailrecursion/boot-core "2.0.0-SNAPSHOT"]]}))
-
-(defn- dyn-classloader [urls ext]
-  (let [loader (DynamicClassLoader. ext)
-        urls   (map io/as-url (flatten urls))]
-    (doseq [u urls] (.addURL loader u))
-    loader))
-
-(defn make-cl [& urls]
-  (let [^URLClassLoader cl (dyn-classloader urls cl/ext-classloader)]
-    (.loadClass cl "clojure.lang.RT")
-    (cl/eval-in* cl '(require 'clojure.main))
-    cl))
 
 (defn get-resources [name]
   (->> (.. Thread currentThread getContextClassLoader (getResources name))
@@ -96,7 +84,7 @@
       (let [fetch?   (and (not= :never @loader/update?) (not @loader/offline?))
             clj-url  (url-str (clj-dep))
             core-url (url-str (if fetch? (core-dep) core-dep*))
-            core-pod (make-cl clj-url core-url)]
+            core-pod (apply cl/classlojure (concat clj-url core-url))]
         (cl/eval-in core-pod
           `(do (require 'tailrecursion.boot)
                (tailrecursion.boot/-main ~(boot-version) ~opts ~@args))))

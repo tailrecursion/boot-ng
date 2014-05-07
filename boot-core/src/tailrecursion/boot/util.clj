@@ -214,3 +214,80 @@
   [to-dir & from-dirs]
   (core/add-sync! to-dir from-dirs)
   identity)
+
+(def bgs
+  "List of tasks running in other threads that will need to be cleaned up before
+  boot can exit."
+  (atom ()))
+
+;; cleanup background tasks on shutdown
+(-> (Runtime/getRuntime)
+  (.addShutdownHook (Thread. #(doseq [job @bgs] (future-cancel job)))))
+
+(core/deftask once
+  "Evaluate the given `task` only once.
+
+  Subsequent evaluations will pass through."
+  [task]
+  (let [ran? (atom false)
+        run? (partial compare-and-set! ran? @ran?)]
+    (fn [continue]
+      (let [task (task continue)]
+        #(continue ((if (run? true) task identity) %))))))
+
+(core/deftask wait
+  "Wait for msec milliseconds before calling its continuation."
+  [msec]
+  (core/with-pre-wrap (Thread/sleep msec)))
+
+(core/deftask bg
+  "Run the given `task` once, in a separate, background thread."
+  [task]
+  (once
+    (core/with-pre-wrap
+      (swap! bgs conj (future ((task identity) core/*event*))))))
+
+(core/deftask nrepl-server-pod
+  "Runs an nrepl server."
+  [& [{:keys [port] :or {port 0}}]]
+  (let [client (core/make-pod :dependencies '[[tailrecursion/boot-core "2.0.0-SNAPSHOT"]])]
+    (core/with-pre-wrap
+      (client '(do (require '[tailrecursion.boot.core :as core])
+                   (core/set-env! :dependencies '[[org.clojure/tools.nrepl "0.2.3"]])
+                   (require '[clojure.tools.nrepl.server :refer [start-server]])
+                   (prn (.getClassLoader clojure.lang.RT))
+                   (prn (.getParent (.getClassLoader clojure.lang.RT)))
+                   (prn (.getParent (.getParent (.getClassLoader clojure.lang.RT))))
+                   (let [server (start-server :port 0)]
+                     (println "Started nREPL server on port" (:port server))
+                     (spit ".nrepl-port" (:port server))
+                     (.deleteOnExit (java.io.File. ".nrepl-port"))))))))
+
+(core/deftask nrepl-server
+  "Runs an nrepl server."
+  [& [{:keys [port] :or {port 0}}]]
+  (core/set-env! :dependencies '[[org.clojure/tools.nrepl "0.2.3"]])
+  (require '[clojure.tools.nrepl.server :refer [start-server]])
+  (core/with-pre-wrap
+    (prn (.getClassLoader clojure.lang.RT))
+    (prn (.getParent (.getClassLoader clojure.lang.RT)))
+    (prn (.getParent (.getParent (.getClassLoader clojure.lang.RT))))
+    (let [server ((resolve 'start-server) :port 0)]
+      (println "Started nREPL server on port" (:port server))
+      (spit ".nrepl-port" (:port server))
+      (.deleteOnExit (java.io.File. ".nrepl-port")))))
+
+(core/deftask nrepl-client
+  "Runs an nrepl client."
+  []
+  (let [client (core/make-pod :dependencies '[[tailrecursion/boot-core "2.0.0-SNAPSHOT"]])]
+    (core/with-pre-wrap
+      (client '(do (require '[tailrecursion.boot.core :as core])
+                   (core/set-env! :dependencies '[[reply "0.3.0"]])
+                   (require '[reply.main :refer [-main]])
+                   (prn (.getClassLoader clojure.lang.RT))
+                   (prn (.getParent (.getClassLoader clojure.lang.RT)))
+                   (prn (.getParent (.getParent (.getClassLoader clojure.lang.RT))))
+                   (-main "--attach" (slurp ".nrepl-port"))
+                   nil))
+      (System/exit 0))))

@@ -8,10 +8,8 @@
   :profiles     {:uber {:dependencies
                         [[org.clojure/clojure            "1.5.1"]
                          [org.clojure/tools.cli          "0.3.1"]
-                         [org.flatland/classlojure       "0.7.1"]
                          [tailrecursion/boot-classloader "0.1.5"]]}
                  :dev  {:dependencies
                         [[org.clojure/clojure            "1.5.1"]
                          [org.clojure/tools.cli          "0.3.1"]
-                         [org.flatland/classlojure       "0.7.1"]
                          [tailrecursion/boot-classloader "0.1.5"]]}})
