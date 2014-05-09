@@ -1,11 +1,14 @@
 (ns tailrecursion.boot.core.classloader
   (:require
+   [server.socket                       :as ss]
    [clojure.java.io                     :as io]
    [tailrecursion.boot.core.classlojure :as cl]
    [tailrecursion.boot.core.env         :as env]
    [tailrecursion.boot.core.util        :as util])
   (:import
-   [java.net URLClassLoader URL URI]
+   [clojure.lang LineNumberingPushbackReader]
+   [java.io File InputStreamReader OutputStreamWriter]
+   [java.net Socket InetAddress URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
 (defn make-classloader []
@@ -18,6 +21,23 @@
 (def dep-jars     (atom []))
 (def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot-core)) [])))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
+(def repl-port    (atom nil))
+(def master-repl  (atom nil))
+
+(defn make-repl-server []
+  (let [localhost (InetAddress/getLoopbackAddress)
+        {:keys [server-socket]} (ss/create-repl-server 0 0 localhost)]
+    (.getLocalPort server-socket)))
+
+(def make-pod-client
+  (memoize
+    #(let [client (Socket. (InetAddress/getLoopbackAddress) %)
+           writer (-> client (.getOutputStream) (OutputStreamWriter.))
+           reader (-> client (.getInputStream) (InputStreamReader.) (LineNumberingPushbackReader.))]
+       (fn [form] (binding [*out* writer] (read reader) (prn form) (read reader))))))
+
+(defn eval-in-master [form]
+  ((make-pod-client @master-repl) form))
 
 (defn offline! [offline?]
   (eval-in-cl2
@@ -42,15 +62,15 @@
 
 (defn add-dirs! [dirs]
   (when (seq dirs)
-    (let [cldr (.getContextClassLoader (Thread/currentThread))
-          dirs (->> dirs (map io/file) (filter #(.exists %)) (map #(.. % toURI toURL)))]
-      (doseq [url dirs] (.addURL cldr url)))))
+    (eval-in-master
+      `(do (require '[tailrecursion.classloader :as ~'cl-pod])
+           (cl-pod/add-dirs! ~(deref repl-port) ~dirs)))))
 
 (defn resolve-deps! [env]
   (let [env (prep-env env)]
-    (eval-in-cl2
-      `(do (require 'tailrecursion.boot-classloader)
-           (tailrecursion.boot-classloader/resolve-dependencies! '~env)))))
+    (eval-in-master
+      `(do (require '[tailrecursion.maven :as ~'mvn-pod])
+           (mvn-pod/resolve-dependencies! ~env)))))
 
 (defn add-deps! [env]
   (let [{deps :dependencies :as env} (prep-env env)
@@ -60,19 +80,14 @@
                  (mapv (partial exclude (vec loaded)))
                  (assoc env :dependencies)
                  resolve-deps!)]
-    (add-dirs! (map #(URL. (str "file://" (:jar %))) specs))
+    (add-dirs! (map :jar specs))
     (swap! dep-jars into (map :jar specs))
     (swap! dependencies into (map :dep specs))))
 
 (defn glob-match? [pattern path]
-  (eval-in-cl2
-    `(do (require 'tailrecursion.boot-classloader)
-         (tailrecursion.boot-classloader/glob-match? ~pattern ~path))))
-
-(defn parse-opts [& args]
-  (eval-in-cl2
-    `(do (require 'clojure.tools.cli)
-         (clojure.tools.cli/parse-opts ~@args))))
+  (eval-in-master
+    `(do (require '[tailrecursion.boot :as ~'boot])
+         (boot/glob-match? ~pattern ~path))))
 
 (defn make-pod [& {:keys [src-paths] :as env}]
   (let [env   (prep-env env)

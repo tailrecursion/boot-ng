@@ -6,10 +6,18 @@
   :aot          :all
   :main         tailrecursion.boot
   :profiles     {:uber {:dependencies
-                        [[org.clojure/clojure            "1.5.1"]
-                         [org.clojure/tools.cli          "0.3.1"]
-                         [tailrecursion/boot-classloader "0.1.5"]]}
+                        [[org.clojure/clojure             "1.5.1"]
+                         [server-socket                   "1.0.0"]
+                         [org.flatland/classlojure        "0.7.1"]
+                         [org.tcrawley/dynapath           "0.2.3"]
+                         [org.clojure/tools.cli           "0.3.1"]
+                         [org.springframework/spring-core "1.2.2"]
+                         [com.cemerick/pomegranate        "0.2.0"]]}
                  :dev  {:dependencies
-                        [[org.clojure/clojure            "1.5.1"]
-                         [org.clojure/tools.cli          "0.3.1"]
-                         [tailrecursion/boot-classloader "0.1.5"]]}})
+                        [[org.clojure/clojure             "1.5.1"]
+                         [server-socket                   "1.0.0"]
+                         [org.flatland/classlojure        "0.7.1"]
+                         [org.tcrawley/dynapath           "0.2.3"]
+                         [org.clojure/tools.cli           "0.3.1"]
+                         [org.springframework/spring-core "1.2.2"]
+                         [com.cemerick/pomegranate        "0.2.0"]]}})
