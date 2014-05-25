@@ -53,13 +53,13 @@
   (when (seq dirs)
     (eval-in-master
       `(do (require '[tailrecursion.classloader :as ~'cl-pod])
-           (cl-pod/add-dirs! ~(deref repl-port) ~dirs)))))
+           (cl-pod/add-dirs! ~(deref repl-port) ~(vec dirs))))))
 
 (defn resolve-deps! [env]
   (let [env (prep-env env)]
     (eval-in-master
       `(do (require '[tailrecursion.maven :as ~'mvn-pod])
-           (mvn-pod/resolve-dependencies! ~env)))))
+           (mvn-pod/resolve-dependencies! '~env)))))
 
 (defn add-deps! [env]
   (let [{deps :dependencies :as env} (prep-env env)
