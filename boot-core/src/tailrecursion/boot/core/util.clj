@@ -22,13 +22,17 @@
 
 (defmacro exit-error
   [& body]
-  `(binding [*out* *err*] ~@body #_(System/exit 1)))
+  `(binding [*out* *err*]
+     ~@body
+     (Thread/sleep 100)
+     (System/exit 1)))
 
 (defmacro exit-ok
   [& body]
   `(try
      ~@body
-     #_(System/exit 0)
+     (Thread/sleep 100)
+     (System/exit 0)
      (catch Throwable e#
        (exit-error (trace/print-cause-trace e#)))))
 

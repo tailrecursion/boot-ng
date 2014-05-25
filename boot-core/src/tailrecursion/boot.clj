@@ -37,12 +37,15 @@
        (if edn-ex
          `(binding [~'*out* ~'*err*]
             (print ~edn-ex)
-            #_(System/exit 1))
+            (Thread/sleep 100)
+            (System/exit 1))
          `(core/boot ~@argv*))
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
 (defn -main [boot-version opts & [arg0 & args :as args*]]
-  (binding [*out* (util/auto-flush (loader/stdout))
+  (binding [*in*  (clojure.lang.LineNumberingPushbackReader.
+                    (java.io.InputStreamReader. System/in clojure.lang.RT/UTF8))
+            *out* (util/auto-flush (loader/stdout))
             *err* (util/auto-flush (loader/stderr))]
     (util/exit-ok
       (let [dotboot?    #(.endsWith (.getName (io/file %)) ".boot")

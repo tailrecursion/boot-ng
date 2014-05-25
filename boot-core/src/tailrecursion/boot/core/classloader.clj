@@ -1,9 +1,9 @@
 (ns tailrecursion.boot.core.classloader
   (:require
-   [server.socket                       :as ss]
-   [clojure.java.io                     :as io]
-   [tailrecursion.boot.core.env         :as env]
-   [tailrecursion.boot.core.util        :as util])
+   [clojure.java.io                       :as io]
+   [tailrecursion.boot.core.server-socket :as ss]
+   [tailrecursion.boot.core.env           :as env]
+   [tailrecursion.boot.core.util          :as util])
   (:import
    [clojure.lang LineNumberingPushbackReader]
    [java.io PrintWriter File InputStreamReader OutputStreamWriter]

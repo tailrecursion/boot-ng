@@ -71,7 +71,9 @@
         core (map :jar (core-dep))
         cl   (apply make-classloader (concat clj core))
         port (cl/eval-in cl
-               `(do (require '[tailrecursion.boot.core.classloader :as ~'pod-cl])
+               `(do (require
+                      '[tailrecursion.boot.core :refer :all]
+                      '[tailrecursion.boot.core.classloader :as ~'pod-cl])
                     (reset! pod-cl/master-repl ~port)
                     (reset! pod-cl/stdout-port ~stdout)
                     (reset! pod-cl/stderr-port ~stderr)

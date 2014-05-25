@@ -60,7 +60,8 @@
             pod  (loader/make-pod-client (loader/make-pod repl out err))]
         (pod `(do (require '[tailrecursion.boot])
                   (tailrecursion.boot/-main ~(boot-version) ~opts ~@args)))
-        #_(System/exit 0)))
+        (Thread/sleep 50)
+        (System/exit 0)))
     (catch Throwable e
       (binding [*out* *err*]
         (trace/print-cause-trace e)
