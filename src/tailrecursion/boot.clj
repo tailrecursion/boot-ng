@@ -40,21 +40,8 @@
     ((juxt :errors :options :arguments)
      (cli/parse-opts args (var-get opts) :in-order true))))
 
-#_(defn -main [& [arg0 & args :as args*]]
-    (loader/load-cli-opts!)
-    (let [repl (loader/make-repl-server)
-          pod  (loader/make-pod repl)]
-      (prn ((loader/make-pod-client pod) '(require '[tailrecursion.boot.core :refer :all])))
-      (prn ((loader/make-pod-client pod) '(+ 1 2 3)))
-      (prn ((loader/make-pod-client pod) '(+ 1 2 3 4)))
-      (prn ((loader/make-pod-client pod) '(+ 1 2 3 4 5)))
-      (prn ((loader/make-pod-client pod) '(pr-str get-env)))
-      (System/exit 0)
-      ))
-
 (defn -main [& [arg0 & args :as args*]]
   (try
-    (reset! maven/offline? true)
     (loader/load-cli-opts!)
     (let [dotboot?           #(.endsWith (.getName (io/file %)) ".boot")
           script?            #(when (and % (.isFile (io/file %)) (dotboot? %)) %)

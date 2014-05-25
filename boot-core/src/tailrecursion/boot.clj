@@ -37,7 +37,7 @@
        (if edn-ex
          `(binding [~'*out* ~'*err*]
             (print ~edn-ex)
-            (System/exit 1))
+            #_(System/exit 1))
          `(core/boot ~@argv*))
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 

@@ -23,9 +23,10 @@
        {:repositories #{maven-central}
         :dependencies [['org.clojure/clojure clj-version]]})))
 
-(defn initial-core-dep []
+(defn initial-core-dep [& [offline?]]
   (maven/resolve-dependencies!
     {:repositories #{clojars}
+     :offline?     offline?
      :dependencies [['tailrecursion/boot-core core-version]]}))
 
 (def core-dep (memoize initial-core-dep))
@@ -35,14 +36,15 @@
     (when-let [entry (.getEntry jar entry-path)]
       (-> jar (.getInputStream entry) slurp))))
 
-(def load-cli-opts!
-  (memoize
-    #(let [jar (-> (initial-core-dep) first :jar)
-           cli "tailrecursion/boot/core/cli_opts.clj"]
-       (when-let [src (slurp-entry jar cli)]
-         (-> (File/createTempFile "cli_opts" ".clj")
-           (doto .deleteOnExit)
-           (as-> x (.getPath x) (doto x (spit src)) (load-file x)))))))
+(defn load-cli-opts! []
+  (let [dep (try (initial-core-dep true)
+                 (catch Throwable _ (initial-core-dep false)))
+        jar (-> (initial-core-dep) first :jar)
+        cli "tailrecursion/boot/core/cli_opts.clj"]
+    (when-let [src (slurp-entry jar cli)]
+      (-> (File/createTempFile "cli_opts" ".clj")
+        (doto .deleteOnExit)
+        (as-> x (.getPath x) (doto x (spit src)) (load-file x))))))
 
 (defn add-url! [classloader url]
   (.addURL classloader (io/as-url (io/file url))))
