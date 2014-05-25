@@ -6,7 +6,9 @@
    [tailrecursion.boot.core             :as core]
    [tailrecursion.boot.core.env         :as env]
    [tailrecursion.boot.core.util        :as util]
-   [tailrecursion.boot.core.classloader :as loader]))
+   [tailrecursion.boot.core.classloader :as loader]
+   )
+  )
 
 (defn read-cli [argv]
   (let [src (str "(" (string/join " " argv) "\n)")]
@@ -18,7 +20,7 @@
   (try (let [dfltsk `(((-> :default-task core/get-env resolve)))
              ->expr #(cond (seq? %) % (vector? %) (list* %) :else (list %))]
          (or (seq (map ->expr (or (seq (read-cli argv)) dfltsk))) dfltsk))
-    (catch Throwable e (with-out-str (trace/print-cause-trace e)))))
+       (catch Throwable e (with-out-str (trace/print-cause-trace e)))))
 
 (defn emit [boot? argv argv* edn-ex forms]
   `(~'(ns tailrecursion.boot.user
@@ -40,8 +42,8 @@
        `(when-let [main# (resolve '~'-main)] (main# ~@argv)))))
 
 (defn -main [boot-version opts & [arg0 & args :as args*]]
-  (binding [*out* (util/auto-flush *out*)
-            *err* (util/auto-flush *err*)]
+  (binding [*out* (util/auto-flush (loader/stdout))
+            *err* (util/auto-flush (loader/stderr))]
     (util/exit-ok
       (let [dotboot?    #(.endsWith (.getName (io/file %)) ".boot")
             script?     #(when (and % (.isFile (io/file %)) (dotboot? %)) %)
@@ -61,17 +63,16 @@
             commented   (concat () userforms [`(comment "script")] bootforms)
             scriptforms (emit boot? args args* ex commented)
             scriptstr   (str (string/join "\n\n" (map util/pp-str scriptforms)) "\n")]
-        (when (:offline    opts) (loader/offline! true))
-        (when (:no-freshen opts) (loader/update! :never))
-        (when (:freshen    opts) (loader/update! :always))
-        (when (:script     opts) (print scriptstr) (System/exit 0))
-        (when (:version    opts) (println boot-version) (System/exit 0))
-        (#'core/init!
-          :boot-version boot-version
-          :boot-options opts
-          :default-task 'tailrecursion.boot.util/help)
-        (let [tmpd (core/mktmpdir! ::bootscript)
-              file #(doto (apply io/file %&) io/make-parents)
-              tmpf (.getPath (file tmpd "tailrecursion" "boot" "user.clj"))]
-          (core/set-env! :boot-user-ns-file tmpf)
-          (doto tmpf (spit scriptstr) (load-file)))))))
+        (cond
+          (:script  opts) (print scriptstr)
+          (:version opts) (println boot-version)
+          :else
+          (do (#'core/init!
+                :boot-version boot-version
+                :boot-options opts
+                :default-task 'tailrecursion.boot.util/help)
+              (let [tmpd (core/mktmpdir! ::bootscript)
+                    file #(doto (apply io/file %&) io/make-parents)
+                    tmpf (.getPath (file tmpd "tailrecursion" "boot" "user.clj"))]
+                (core/set-env! :boot-user-ns-file tmpf)
+                (doto tmpf (spit scriptstr) (load-file)))))))))

@@ -344,8 +344,9 @@
 
 ;; ## Public Utility Functions
 
-(defn make-pod
-  "Create a new pod. Pods are segregated Clojure environments where dependencies
+(comment
+  (defn make-pod
+    "Create a new pod. Pods are segregated Clojure environments where dependencies
   can be loaded without affecting the parent environment's class path. This
   function accepts arguments in the form of environment key-value pairs, similar
   to `set-env!` above. The special `:main` key allows the caller to specify a
@@ -361,16 +362,16 @@
   Note: No objects can be passed between the parent and the pod environments.
   However, Clojure data is fine because it's serialized at the boundary (it's
   printed on one side and read on the other)."
-  [& {f :main :as args}]
-  (let [env (loader/prep-env (dissoc (get-env) :dependencies))
-        pod (apply loader/make-pod (mapcat identity (merge env args)))
-        ns  (when-let [x (and f (namespace f))] (symbol x))]
-    (if-not ns #(pod %) #(pod `(do (require '~ns) (~f ~@%&))))))
+    [& {f :main :as args}]
+    (let [env (loader/prep-env (dissoc (get-env) :dependencies))
+          pod (apply loader/make-pod (mapcat identity (merge env args)))
+          ns  (when-let [x (and f (namespace f))] (symbol x))]
+      (if-not ns #(pod %) #(pod `(do (require '~ns) (~f ~@%&)))))))
 
 (defn parse-opts
   "Parse command line options using clojure.tools.cli in a pod."
   [args argspecs & options]
-  (apply loader/parse-opts (vec args) (vec argspecs) options))
+  (loader/parse-opts args argspecs options))
   
 (defn src-files
   "Returns a seq of files in :src-paths."

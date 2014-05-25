@@ -2,52 +2,41 @@
   (:require
    [server.socket                       :as ss]
    [clojure.java.io                     :as io]
-   [tailrecursion.boot.core.classlojure :as cl]
    [tailrecursion.boot.core.env         :as env]
    [tailrecursion.boot.core.util        :as util])
   (:import
    [clojure.lang LineNumberingPushbackReader]
-   [java.io File InputStreamReader OutputStreamWriter]
+   [java.io PrintWriter File InputStreamReader OutputStreamWriter]
    [java.net Socket InetAddress URLClassLoader URL URI]
    java.lang.management.ManagementFactory))
 
-(defn make-classloader []
-  (let [path (-> "boot-classloader-resource-path" io/resource slurp .trim)
-        jar  (io/file env/+boot-dir+ path)]
-    (when (.createNewFile jar) (util/copy-resource path jar))
-    (let [cl (cl/classlojure (str "file:" (.getPath jar)))] #(cl/eval-in cl %))))
-
-(def eval-in-cl2  (let [cl (make-classloader)] #(cl %)))
+(def localhost    (InetAddress/getLoopbackAddress))
 (def dep-jars     (atom []))
 (def dependencies (atom (or (:dependencies (util/get-project 'tailrecursion/boot-core)) [])))
 (def dfl-env      {:repositories #{"http://clojars.org/repo/" "http://repo1.maven.org/maven2/"}})
+(def stdout-port  (atom nil))
+(def stderr-port  (atom nil))
 (def repl-port    (atom nil))
 (def master-repl  (atom nil))
 
-(defn make-repl-server []
-  (let [localhost (InetAddress/getLoopbackAddress)
-        {:keys [server-socket]} (ss/create-repl-server 0 0 localhost)]
-    (.getLocalPort server-socket)))
-
 (def make-pod-client
   (memoize
-    #(let [client (Socket. (InetAddress/getLoopbackAddress) %)
+    #(let [client (Socket. localhost %)
            writer (-> client (.getOutputStream) (OutputStreamWriter.))
            reader (-> client (.getInputStream) (InputStreamReader.) (LineNumberingPushbackReader.))]
        (fn [form] (binding [*out* writer] (read reader) (prn form) (read reader))))))
 
+(defn make-repl-server []
+  (-> (ss/create-repl-server 0 0 localhost) :server-socket .getLocalPort))
+
+(defn make-io-client [port]
+  (PrintWriter. (.getOutputStream (Socket. localhost port))))
+
 (defn eval-in-master [form]
   ((make-pod-client @master-repl) form))
 
-(defn offline! [offline?]
-  (eval-in-cl2
-    `(do (require 'tailrecursion.boot-classloader)
-         (reset! tailrecursion.boot-classloader/offline? ~offline?))))
-
-(defn update! [when?]
-  (eval-in-cl2
-    `(do (require 'tailrecursion.boot-classloader)
-         (reset! tailrecursion.boot-classloader/update? ~when?))))
+(def stdout #(make-io-client @stdout-port))
+(def stderr #(make-io-client @stderr-port))
 
 (defn prep-env [env]
   (-> (merge dfl-env env)
@@ -89,7 +78,16 @@
     `(do (require '[tailrecursion.boot :as ~'boot])
          (boot/glob-match? ~pattern ~path))))
 
-(defn make-pod [& {:keys [src-paths] :as env}]
+(defn parse-opts [args argspecs options]
+  (eval-in-master
+    `(do (require '[tailrecursion.boot :as ~'boot])
+         (boot/parse-opts ~(vec args) ~(vec argspecs) ~@options))))
+
+(defn auto-flush [s]
+  (eval-in-master
+    `(do (.println System/out ~s) (.flush System/out))))
+
+#_(defn make-pod [& {:keys [src-paths] :as env}]
   (let [env   (prep-env env)
         clj?  #(= 'org.clojure/clojure (first (:dep %)))
         {[{clj-jar :jar}] true, other-deps false}
